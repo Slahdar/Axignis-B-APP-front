@@ -28,19 +28,45 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const navigationItems = [
-  { title: "Tableau de bord", url: "/", icon: Home },
-  { title: "Équipements", url: "/equipments", icon: Wrench },
-  { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Marques", url: "/brands", icon: Building },
-  { title: "Domaines", url: "/domains", icon: Globe },
-  { title: "Familles", url: "/families", icon: FolderTree },
-  { title: "Types d'équipements", url: "/equipment-types", icon: Settings },
-  { title: "Types de documents", url: "/document-types", icon: FileType },
-  { title: "Utilisateurs", url: "/users", icon: Users },
-  { title: "Permissions", url: "/user-permissions", icon: Shield },
-  { title: "Inventaire", url: "/inventory", icon: Package },
+const navigationGroups = [
+  {
+    label: "Navigation",
+    items: [
+      { title: "Tableau de bord", url: "/", icon: Home },
+    ],
+  },
+  {
+    label: "Équipements",
+    items: [
+      { title: "Équipements", url: "/equipments", icon: Wrench },
+      { title: "Inventaire", url: "/inventory", icon: Package },
+    ],
+  },
+  {
+    label: "Documents",
+    items: [
+      { title: "Documents", url: "/documents", icon: FileText },
+    ],
+  },
+  {
+    label: "Référentiels",
+    items: [
+      { title: "Marques", url: "/brands", icon: Building },
+      { title: "Domaines", url: "/domains", icon: Globe },
+      { title: "Familles", url: "/families", icon: FolderTree },
+      { title: "Types d'équipements", url: "/equipment-types", icon: Settings },
+      { title: "Types de documents", url: "/document-types", icon: FileType },
+    ],
+  },
+  {
+    label: "Utilisateurs & Permissions",
+    items: [
+      { title: "Utilisateurs", url: "/users", icon: Users },
+      { title: "Permissions", url: "/user-permissions", icon: Shield },
+    ],
+  },
 ];
+
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -76,17 +102,15 @@ export function AppSidebar() {
           </div>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+        {navigationGroups.map((group) => (
+        <SidebarGroup key={group.label}>
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {group.items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={getNavClasses(item.url)}
-                    >
+                    <NavLink to={item.url} className={getNavClasses(item.url)}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -96,7 +120,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
+      ))}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
