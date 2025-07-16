@@ -154,6 +154,9 @@ export default function DomainsPage() {
               </div>
             </CardHeader>
             <CardContent>
+              <p className="text-xs text-muted-foreground mb-1">
+                Serial: {domain.serial_number}
+              </p>
               <p className="text-sm text-muted-foreground">
                 Créé le {new Date(domain.created_at).toLocaleDateString()}
               </p>

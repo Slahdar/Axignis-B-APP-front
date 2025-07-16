@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Download, Eye, Calendar, FileType, AlertTriangle, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Download, Eye, Calendar, FileType, AlertTriangle, Edit, Trash2, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -20,6 +21,10 @@ import { Document, DocumentType, Product } from "@/types/equipment";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiService } from "@/services/api";
 import { toast } from "sonner";
+
+interface DocumentWithProducts extends Document {
+  products?: Product[];
+}
 
 export default function DocumentsPage() {
   const queryClient = useQueryClient();
@@ -41,7 +46,9 @@ export default function DocumentsPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<DocumentWithProducts | null>(null);
+  const [managingDocument, setManagingDocument] = useState<DocumentWithProducts | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     document_type_id: "",
@@ -53,9 +60,9 @@ export default function DocumentsPage() {
     file: null as File | null
   });
 
-  const documents = documentsResponse?.data || [];
-  const documentTypes = documentTypesResponse?.data || [];
-  const products = productsResponse?.data || [];
+  const documents: DocumentWithProducts[] = documentsResponse?.data || [];
+  const documentTypes: DocumentType[] = documentTypesResponse?.data || [];
+  const allProducts: Product[] = Array.isArray(productsResponse?.data) ? productsResponse.data : (productsResponse?.data as any)?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +102,44 @@ export default function DocumentsPage() {
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     } catch (error: any) {
+      console.error('Document submission error:', error);
       toast.error(error.message || "Erreur lors de l'opération");
+    }
+  };
+
+  const handleAttachProduct = async (productId: number) => {
+    if (!managingDocument) return;
+    
+    try {
+      await apiService.attachDocumentToProduct(productId, managingDocument.id);
+      toast.success("Produit ajouté au document avec succès");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      // Update local state
+      setManagingDocument(prev => prev ? {
+        ...prev,
+        products: [...(prev.products || []), allProducts.find(p => p.id === productId)!]
+      } : null);
+    } catch (error: any) {
+      console.error('Attach product error:', error);
+      toast.error(error.message || "Erreur lors de l'ajout du produit");
+    }
+  };
+
+  const handleDetachProduct = async (documentId: number, productId: number) => {
+    try {
+      await apiService.detachDocumentFromProduct(productId, documentId);
+      toast.success("Produit retiré du document avec succès");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      // Update local state if it's the same document being managed
+      if (managingDocument && managingDocument.id === documentId) {
+        setManagingDocument(prev => prev ? {
+          ...prev,
+          products: prev.products?.filter(p => p.id !== productId) || []
+        } : null);
+      }
+    } catch (error: any) {
+      console.error('Detach product error:', error);
+      toast.error(error.message || "Erreur lors du retrait du produit");
     }
   };
 
@@ -158,19 +202,24 @@ export default function DocumentsPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (document: Document) => {
+  const openEditDialog = (document: DocumentWithProducts) => {
     setEditingDocument(document);
     setFormData({
       name: document.name,
       document_type_id: document.document_type_id.toString(),
       reference: document.reference,
       version: document.version,
-      issue_date: document.issue_date,
-      expiry_date: document.expiry_date || "",
+      issue_date: document.issue_date.split('T')[0],
+      expiry_date: document.expiry_date ? document.expiry_date.split('T')[0] : "",
       product_ids: document.products?.map(p => p.id) || [],
       file: null
     });
     setDialogOpen(true);
+  };
+
+  const openProductDialog = (document: DocumentWithProducts) => {
+    setManagingDocument(document);
+    setProductDialogOpen(true);
   };
 
   const filteredDocuments = documents.filter(doc =>
@@ -347,7 +396,7 @@ export default function DocumentsPage() {
                     <SelectValue placeholder="Ajouter un produit" />
                   </SelectTrigger>
                   <SelectContent>
-                    {products.filter(p => !formData.product_ids.includes(p.id)).map((product) => (
+                    {allProducts.filter(p => !formData.product_ids.includes(p.id)).map((product) => (
                       <SelectItem key={product.id} value={product.id.toString()}>
                         {product.name}
                       </SelectItem>
@@ -357,7 +406,7 @@ export default function DocumentsPage() {
                 {formData.product_ids.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {formData.product_ids.map(productId => {
-                      const product = products.find(p => p.id === productId);
+                      const product = allProducts.find(p => p.id === productId);
                       return product ? (
                         <Badge key={productId} variant="secondary" className="flex items-center gap-1">
                           {product.name}
@@ -478,14 +527,37 @@ export default function DocumentsPage() {
               <TableBody>
                 {filteredDocuments.map((document) => (
                   <TableRow key={document.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{document.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {document.reference}
-                        </div>
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div>
+                         <div className="font-medium">{document.name}</div>
+                         <div className="text-sm text-muted-foreground">
+                           {document.reference}
+                         </div>
+                         {document.products && document.products.length > 0 && (
+                           <div className="flex flex-wrap gap-1 mt-2">
+                             {document.products.map((product) => (
+                               <StatusBadge 
+                                 key={product.id} 
+                                 status="active"
+                                 className="text-xs group relative"
+                               >
+                                 <span>{product.name}</span>
+                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleDetachProduct(document.id, product.id);
+                                   }}
+                                   className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                   title="Retirer ce produit"
+                                 >
+                                   <X className="h-3 w-3" />
+                                 </button>
+                               </StatusBadge>
+                             ))}
+                           </div>
+                         )}
+                       </div>
+                     </TableCell>
                     <TableCell>{getDocumentTypeBadge(document.document_type)}</TableCell>
                     <TableCell>
                       <code className="text-sm bg-muted px-2 py-1 rounded">
@@ -508,7 +580,7 @@ export default function DocumentsPage() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>{formatFileSize(document.file_size)}</TableCell>
+                    <TableCell>{document.file_size ? formatFileSize(document.file_size) : '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button 
@@ -529,6 +601,9 @@ export default function DocumentsPage() {
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEditDialog(document)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openProductDialog(document)} title="Gérer les produits">
+                          <Plus className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(document.id)}>
                           <Trash2 className="h-4 w-4" />
@@ -551,6 +626,72 @@ export default function DocumentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog for managing products associated to a document */}
+      <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Gérer les produits - {managingDocument?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium mb-2">Produits actuellement associés</h3>
+              {managingDocument?.products && managingDocument.products.length > 0 ? (
+                <div className="space-y-2">
+                  {managingDocument.products.map(product => (
+                    <div key={product.id} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <div className="font-medium">{product.name}</div>
+                        <div className="text-sm text-muted-foreground">{product.brand?.name}</div>
+                      </div>
+                       <Button 
+                         variant="destructive" 
+                         size="sm" 
+                         onClick={() => handleDetachProduct(managingDocument.id, product.id)}
+                       >
+                         Retirer
+                       </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Aucun produit associé</p>
+              )}
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium mb-2">Ajouter un produit</h3>
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  const productId = Number(value);
+                  handleAttachProduct(productId);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un produit à ajouter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allProducts
+                    .filter(p => !managingDocument?.products?.some(dp => dp.id === p.id))
+                    .map((product) => (
+                      <SelectItem key={product.id} value={product.id.toString()}>
+                        {product.name} - {product.brand?.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setProductDialogOpen(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

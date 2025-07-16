@@ -156,7 +156,7 @@ export default function InventoryPage() {
       product_id: inventory.product_id.toString(),
       location: inventory.location,
       brand_id: inventory.brand_id?.toString() || "",
-      commissioning_date: inventory.commissioning_date || "",
+      commissioning_date: inventory.commissioning_date ? inventory.commissioning_date.split('T')[0] : "",
       notes: inventory.notes || "",
       additional_fields: additionalFieldsArray
     });
@@ -344,10 +344,13 @@ export default function InventoryPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                Produit: {products.find(p => p.id === inventory.product_id)?.name}
+                Produit: {inventory.product?.name || products.find(p => p.id === inventory.product_id)?.name || "Non défini"}
               </p>
               <p className="text-sm text-muted-foreground mb-2">
-                Marque: {brands.find(b => b.id === inventory.brand_id)?.name}
+                Marque: {inventory.brand?.name || brands.find(b => b.id === inventory.brand_id)?.name || "Non définie"}
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Serial: {inventory.serial_number}
               </p>
               {inventory.commissioning_date && (
                 <p className="text-sm text-muted-foreground mb-2">

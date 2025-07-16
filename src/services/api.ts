@@ -1,6 +1,13 @@
 import { 
   Product, 
   CreateProductData,
+  CreateDocumentData,
+  CreateDomainData,
+  CreateFamilyData,
+  CreateEquipmentTypeData,
+  CreateBrandData,
+  CreateDocumentTypeData,
+  CreateInventoryData,
   Brand, 
   EquipmentType, 
   Document, 
@@ -119,7 +126,7 @@ class ApiService {
     return this.request<ApiResponse<Domain>>(`/domains/${id}`);
   }
 
-  async createDomain(domain: Omit<Domain, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Domain>> {
+  async createDomain(domain: CreateDomainData): Promise<ApiResponse<Domain>> {
     return this.request<ApiResponse<Domain>>('/domains', {
       method: 'POST',
       body: JSON.stringify(domain),
@@ -152,7 +159,7 @@ class ApiService {
     return this.request<ApiResponse<Family>>(`/families/${id}`);
   }
 
-  async createFamily(family: Omit<Family, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Family>> {
+  async createFamily(family: CreateFamilyData): Promise<ApiResponse<Family>> {
     return this.request<ApiResponse<Family>>('/families', {
       method: 'POST',
       body: JSON.stringify(family),
@@ -185,7 +192,7 @@ class ApiService {
     return this.request<ApiResponse<EquipmentType>>(`/equipment-types/${id}`);
   }
 
-  async createEquipmentType(type: Omit<EquipmentType, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<EquipmentType>> {
+  async createEquipmentType(type: CreateEquipmentTypeData): Promise<ApiResponse<EquipmentType>> {
     return this.request<ApiResponse<EquipmentType>>('/equipment-types', {
       method: 'POST',
       body: JSON.stringify(type),
@@ -214,7 +221,7 @@ class ApiService {
     return this.request<ApiResponse<Brand>>(`/brands/${id}`);
   }
 
-  async createBrand(brand: Omit<Brand, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Brand>> {
+  async createBrand(brand: CreateBrandData): Promise<ApiResponse<Brand>> {
     return this.request<ApiResponse<Brand>>('/brands', {
       method: 'POST',
       body: JSON.stringify(brand),
@@ -301,7 +308,7 @@ class ApiService {
     return this.request<ApiResponse<DocumentType>>(`/document-types/${id}`);
   }
 
-  async createDocumentType(type: Omit<DocumentType, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<DocumentType>> {
+  async createDocumentType(type: CreateDocumentTypeData): Promise<ApiResponse<DocumentType>> {
     return this.request<ApiResponse<DocumentType>>('/document-types', {
       method: 'POST',
       body: JSON.stringify(type),
@@ -323,7 +330,7 @@ class ApiService {
 
   // Documents
   async getDocuments(): Promise<ApiResponse<Document[]>> {
-    return this.request<ApiResponse<Document[]>>('/documents');
+    return this.request<ApiResponse<Document[]>>('/documents?with=products');
   }
 
   async getDocument(id: number): Promise<ApiResponse<Document>> {
@@ -352,8 +359,11 @@ class ApiService {
   }
 
   async updateDocument(id: number, formData: FormData): Promise<ApiResponse<Document>> {
+    // Laravel requires _method override for multipart PUT requests
+    formData.append('_method', 'PUT');
+    
     const response = await fetch(`${API_BASE_URL}/documents/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.token}`,
         'Accept': 'application/json',
@@ -419,7 +429,7 @@ class ApiService {
     return this.request<ApiResponse<Inventory[]>>(`/products/${productId}/inventories`);
   }
 
-  async createInventory(inventory: Omit<Inventory, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Inventory>> {
+  async createInventory(inventory: CreateInventoryData): Promise<ApiResponse<Inventory>> {
     return this.request<ApiResponse<Inventory>>('/inventories', {
       method: 'POST',
       body: JSON.stringify(inventory),
