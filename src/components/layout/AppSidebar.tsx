@@ -90,13 +90,13 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="p-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center shadow-button">
+            <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <Building className="h-5 w-5 text-white" />
             </div>
             {!collapsed && (
               <div>
-                <h2 className="text-lg font-heading font-bold text-foreground">ArchSafe Pro</h2>
-                <p className="text-xs text-muted-foreground font-medium">Sécurité & Architecture</p>
+                <h2 className="text-lg font-heading font-bold text-foreground text-white">Axignis</h2>
+                <p className="text-xs text-muted-foreground font-medium">Base d'équipements technique</p>
               </div>
             )}
           </div>
